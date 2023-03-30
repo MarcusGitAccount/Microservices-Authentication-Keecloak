@@ -1,0 +1,25 @@
+server:
+  port: 8082
+  error:
+    include:
+      stacktrace: never
+
+uri: ${KEYCLOAK_SERVER_URL:http://keycloak:8080}/realms/${KEYCLOAK_REALM:services-realm}
+
+spring:
+    security:
+      oauth2:
+        resourceserver:
+          jwt:
+            issuer-uri: ${uri}
+            jwk-set-uri: ${uri}/protocol/openid-connect/certs
+
+jwt:
+  auth:
+    converter:
+      resource-id: ${KEYCLOAK_CLIENT_ID}
+      principal-attribute: preferred_username
+
+logging:
+  level:
+    org.springframework.security: DEBUG

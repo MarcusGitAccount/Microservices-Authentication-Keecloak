@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  keycloak:
+    image: jboss/keycloak:latest
+    container_name: keycloak
+    hostname: keycloak
+    restart: always
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      - service-network
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      DB_VENDOR: POSTGRES
+      DB_ADDR: keycloak-database
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: keycloak
+    depends_on:
+      - keycloak-database
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/auth/realms/master"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  keycloak-database:
+    image: postgres:latest
+    container_name: keycloak-database
+    restart: always
+    ports:
+      - "15432:5432"
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "keycloak", "-d", "keycloak"]
+      interval: 5s
+      retries: 5
+    volumes:
+      - ../keycloak-data:/var/lib/postgresql/data
+
+  order-service:
+    image: order-service:latest
+    container_name: order-service
+    hostname: order-service
+    ports:
+      - "8081:8081"
+    expose:
+      - "8081"
+    environment:
+      NOTIFICATION_HOST: notification-service
+      NOTIFICATION_PORT: 8082
+      KEYCLOAK_SERVER_URL: http://keycloak:8080/auth
+      KEYCLOAK_REALM: services-realm
+      KEYCLOAK_CLIENT_ID: order-service
+      KEYCLOAK_CLIENT_SECRET: sl05qVodAN2uPBsHGEeBJr8evKtu4lxb
+    depends_on:
+      - notification-service
+      - keycloak
+    networks:
+      - service-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  notification-service:
+    image: notification-service:latest
+    container_name: notification-service
+    hostname: notification-service
+    ports:
+      - "8082:8082"
+    expose:
+      - "8082"
+    networks:
+      - service-network
+    environment:
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_SERVER_URL: http://keycloak:8080/auth
+      KEYCLOAK_REALM: services-realm
+      KEYCLOAK_CLIENT_ID: notification-service
+      KEYCLOAK_CLIENT_SECRET: KsWPTM30kqHX36q7qW9CfaK551nGMaWy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+networks:
+  service-network:
+    driver: bridge

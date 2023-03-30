@@ -1,0 +1,47 @@
+plugins {
+    id 'java'
+}
+
+group 'com.mpop.e2e'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'io.rest-assured:rest-assured:5.3.0'
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine:5.8.2'
+}
+
+task startContainers(type: Exec) {
+    commandLine 'docker-compose', 'up', '-d'
+}
+
+task waitContainers(type: Exec) {
+    commandLine 'sh', 'wait_for_services.sh'
+}
+
+task stopContainers(type: Exec) {
+    commandLine 'docker-compose', 'down'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+task e2e(type: GradleBuild) {
+    tasks = ['startContainers', 'waitContainers', 'test', 'stopContainers']
+}
+
+task buildOrderService(type: GradleBuild) {
+    buildFile = file('../ordering/build.gradle')
+    tasks = ['buildDockerImage']
+}
+
+task buildNotificationService(type: GradleBuild) {
+    buildFile = file('../notification/build.gradle')
+    tasks = ['buildDockerImage']
+}
